@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart English Learning Platform - THPT</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React and Babel CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide React Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        
+        .prose { max-width: none; }
+        .prose p { margin-bottom: 1em; }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // Create Lucide icons
+        const createIcon = (name) => ({ className, ...props }) => 
+            React.createElement('i', { 
+                'data-lucide': name, 
+                className, 
+                ...props 
+            });
+
+        const BookOpen = createIcon('book-open');
+        const Brain = createIcon('brain');
+        const FileText = createIcon('file-text');
+        const Languages = createIcon('languages');
+        const Target = createIcon('target');
+        const TrendingUp = createIcon('trending-up');
+        const Clock = createIcon('clock');
+        const CheckCircle = createIcon('check-circle');
+        const AlertCircle = createIcon('alert-circle');
+        const Star = createIcon('star');
+        const Upload = createIcon('upload');
+        const Save = createIcon('save');
+        const Search = createIcon('search');
+        const X = createIcon('x');
+        const Plus = createIcon('plus');
+        const Book = createIcon('book');
+        const Users = createIcon('users');
+        const Play = createIcon('play');
+        const RefreshCw = createIcon('refresh-cw');
+        const Download = createIcon('download');
+
+        // Initialize Lucide icons after component mount
+        useEffect(() => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }, []);
+
+        const vocabularyCollections = [
+            { id: 1, name: "Academic Words", words: ['analyze', 'evaluate', 'contribute'] },
+            { id: 2, name: "Daily News", words: ['accomplish', 'demonstrate'] },
+            { id: 3, name: "THPT Preparation", words: ['significant', 'essential'] },
+            { id: 4, name: "Uploaded Vocabulary", words: [] }
+        ];
+
+        const sampleExamData = {
+            questions: [
+                {
+                    id: 1,
+                    type: "single",
+                    question: "Choose the correct tense: 'By next year, I _____ my studies.'",
+                    options: ["A. will complete", "B. will have completed", "C. complete", "D. completed"],
+                    correct: 1,
+                    knowledge: "Future Perfect Tense",
+                    difficulty: "Vận dụng",
+                    explanation: "Future Perfect được dùng để diễn tả hành động hoàn thành trước một thời điểm trong tương lai."
+                },
+                {
+                    id: 2,
+                    type: "reading_cluster",
+                    passage: "Climate change represents one of the most significant challenges facing humanity today. The increasing concentration of greenhouse gases in the atmosphere has led to a gradual warming of the planet, resulting in unprecedented changes to weather patterns, sea levels, and ecosystems worldwide.",
+                    questions: [
+                        {
+                            id: "2a",
+                            question: "What is the main cause of climate change according to the passage?",
+                            options: ["A. Natural disasters", "B. Human activities", "C. Ocean currents", "D. Solar radiation"],
+                            correct: 1,
+                            knowledge: "Reading Comprehension - Main Idea",
+                            difficulty: "Thông hiểu"
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const SmartEnglishLearning = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [savedWords, setSavedWords] = useState([]);
+            const [vietnameseNews, setVietnameseNews] = useState('');
+            const [translatedNews, setTranslatedNews] = useState(null);
+            const [uploadedExams, setUploadedExams] = useState([]);
+            const [selectedExam, setSelectedExam] = useState(null);
+            const [showDictionary, setShowDictionary] = useState(false);
+            const [dictionaryWord, setDictionaryWord] = useState('');
+            const [dictionaryPosition, setDictionaryPosition] = useState({ x: 0, y: 0 });
+            const [examMode, setExamMode] = useState(false);
+            const [examResults, setExamResults] = useState(null);
+            const [showResults, setShowResults] = useState(false);
+            const [examTime, setExamTime] = useState(3600);
+            const [timerRunning, setTimerRunning] = useState(false);
+
+            const pdfInputRef = useRef(null);
+
+            const tabs = [
+                { id: 'dashboard', label: 'Tổng Quan', icon: TrendingUp },
+                { id: 'news', label: 'Đọc Báo', icon: Languages },
+                { id: 'vocabulary', label: 'Sổ Từ Vựng', icon: Book },
+                { id: 'practice', label: 'Luyện Thi', icon: Target }
+            ];
+
+            // Initialize Lucide icons after render
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+                }, 100);
+                return () => clearTimeout(timer);
+            });
+
+            // Dictionary double-click handler
+            useEffect(() => {
+                const handleDoubleClick = (e) => {
+                    const selection = window.getSelection();
+                    const selectedText = selection.toString().trim();
+                    
+                    if (selectedText && /^[a-zA-Z]+$/.test(selectedText)) {
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        
+                        setDictionaryWord(selectedText.toLowerCase());
+                        setDictionaryPosition({
+                            x: rect.left,
+                            y: rect.bottom + window.scrollY
+                        });
+                        setShowDictionary(true);
+                    }
+                };
+
+                document.addEventListener('dblclick', handleDoubleClick);
+                return () => document.removeEventListener('dblclick', handleDoubleClick);
+            }, []);
+
+            const translateNewsWithAI = async (vietnameseText) => {
+                // Mock AI translation for demo
+                return {
+                    englishVersion: "<p>Vietnam's <strong>economic growth</strong> has been <strong>remarkable</strong> in recent decades, transforming from an agricultural economy to a <strong>dynamic</strong> manufacturing hub.</p>",
+                    vietnameseVersion: "<p>Tăng trưởng <strong>kinh tế</strong> của Việt Nam thật <strong>đáng chú ý</strong> trong những thập kỷ gần đây, chuyển đổi từ nền kinh tế nông nghiệp thành trung tâm sản xuất <strong>năng động</strong>.</p>",
+                    questions: [
+                        {
+                            question: "What has been remarkable about Vietnam?",
+                            options: ["A. Agricultural development", "B. Economic growth", "C. Tourism industry", "D. Education system"],
+                            correct: 1
+                        }
+                    ],
+                    vocabulary: [
+                        { word: "remarkable", ipa: "/rɪˈmɑːrkəbl/", meaning: "đáng chú ý, xuất sắc", synonyms: "outstanding, notable" }
+                    ],
+                    answers: [
+                        { question: 1, answer: "B", explanation: "The passage clearly states Vietnam's economic growth has been remarkable." }
+                    ]
+                };
+            };
+
+            const handleTranslateNews = async () => {
+                if (vietnameseNews.trim()) {
+                    const result = await translateNewsWithAI(vietnameseNews);
+                    if (result) {
+                        setTranslatedNews(result);
+                    }
+                }
+            };
+
+            const processPDFWithAI = async (file) => {
+                // Mock PDF processing for demo
+                const mockExam = {
+                    examTitle: `Đề Thi ${file.name.replace('.pdf', '')}`,
+                    examType: "THPT",
+                    timeLimit: 60,
+                    totalQuestions: 50,
+                    questions: sampleExamData.questions
+                };
+
+                const storedExam = {
+                    id: Date.now(),
+                    fileName: file.name,
+                    uploadDate: new Date().toISOString(),
+                    ...mockExam
+                };
+                
+                setUploadedExams(prev => [...prev, storedExam]);
+                setSelectedExam(storedExam);
+                return mockExam;
+            };
+
+            const handlePDFUpload = async (event) => {
+                const file = event.target.files[0];
+                if (file && file.type === 'application/pdf') {
+                    await processPDFWithAI(file);
+                }
+            };
+
+            const startExam = () => {
+                setExamMode(true);
+                setExamTime(selectedExam?.timeLimit ? selectedExam.timeLimit * 60 : 3600);
+                setTimerRunning(true);
+                setShowResults(false);
+            };
+
+            const finishExam = () => {
+                setTimerRunning(false);
+                setExamResults([
+                    {
+                        stt: 1,
+                        knowledge: "Future Perfect Tense",
+                        questions: "1",
+                        correct: 1,
+                        total: 1,
+                        percentage: 100
+                    }
+                ]);
+                setShowResults(true);
+                setExamMode(false);
+            };
+
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            const exportToCSV = () => {
+                const headers = ['Word', 'Type', 'IPA', 'Meaning', 'Level'];
+                const csvContent = [
+                    headers.join(','),
+                    ...savedWords.map(word => [
+                        word.word || '',
+                        word.type || '',
+                        word.ipa || '',
+                        `"${word.meaning || ''}"`,
+                        word.level || ''
+                    ].join(','))
+                ].join('\n');
+
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'vocabulary.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            };
+
+            const DictionaryPopup = ({ word, position, onClose }) => {
+                const [loading, setLoading] = useState(false);
+
+                const dictData = {
+                    type: '(v)',
+                    ipa: '/ˈænəlaɪz/',
+                    meaning: 'to study or examine something in detail',
+                    level: 'B2',
+                    examples: ['Scientists analyze data to draw conclusions.'],
+                    collocations: 'analyze data, analyze results',
+                    synonyms: ['examine', 'study', 'investigate'],
+                    usage: 'formal, academic',
+                    frequency: 'common'
+                };
+
+                const saveWord = () => {
+                    const newWord = {
+                        id: Date.now(),
+                        word: word,
+                        collectionId: 1,
+                        ...dictData,
+                        dateAdded: new Date().toISOString()
+                    };
+                    setSavedWords(prev => [...prev, newWord]);
+                    setShowDictionary(false);
+                };
+
+                return React.createElement('div', {
+                    className: "fixed z-50 bg-white border-2 border-blue-300 rounded-lg shadow-2xl w-96 max-h-96 overflow-hidden",
+                    style: { 
+                        left: Math.min(position.x, window.innerWidth - 420), 
+                        top: position.y + 10 
+                    }
+                },
+                    // Header
+                    React.createElement('div', { className: "flex justify-between items-center p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white" },
+                        React.createElement('div', null,
+                            React.createElement('div', { className: "flex items-center space-x-2" },
+                                React.createElement('span', { className: "font-bold text-xl" }, word),
+                                React.createElement('span', { className: "bg-white text-blue-600 px-2 py-1 rounded text-xs font-semibold" }, dictData.level)
+                            ),
+                            React.createElement('div', { className: "flex items-center space-x-2 mt-1" },
+                                React.createElement('span', { className: "text-blue-100 text-sm" }, dictData.type),
+                                React.createElement('span', { className: "text-blue-100 text-sm font-mono" }, dictData.ipa)
+                            )
+                        ),
+                        React.createElement('button', { 
+                            onClick: onClose, 
+                            className: "text-blue-200 hover:text-white p-1" 
+                        }, "×")
+                    ),
+                    
+                    // Content
+                    React.createElement('div', { className: "p-4 max-h-80 overflow-y-auto" },
+                        React.createElement('div', { className: "mb-4" },
+                            React.createElement('div', { className: "text-lg text-gray-800 leading-relaxed font-medium" }, dictData.meaning)
+                        ),
+                        React.createElement('div', { className: "mb-4" },
+                            React.createElement('strong', { className: "text-sm font-semibold text-gray-700 block mb-2" }, "Examples:"),
+                            dictData.examples.map((example, index) => 
+                                React.createElement('p', { 
+                                    key: index, 
+                                    className: "text-sm text-gray-700 italic pl-3 border-l-2 border-blue-200" 
+                                }, example)
+                            )
+                        ),
+                        React.createElement('div', { className: "mb-4" },
+                            React.createElement('strong', { className: "text-sm font-semibold text-gray-700 block mb-2" }, "Synonyms:"),
+                            React.createElement('div', { className: "flex flex-wrap gap-2" },
+                                dictData.synonyms.map((syn, index) => 
+                                    React.createElement('span', { 
+                                        key: index, 
+                                        className: "bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium" 
+                                    }, syn)
+                                )
+                            )
+                        )
+                    ),
+                    
+                    // Footer
+                    React.createElement('div', { className: "flex items-center space-x-3 p-4 bg-gray-50 border-t" },
+                        React.createElement('select', { className: "text-sm border rounded px-3 py-2 flex-1" },
+                            vocabularyCollections.map(col => 
+                                React.createElement('option', { key: col.id, value: col.id }, col.name)
+                            )
+                        ),
+                        React.createElement('button', {
+                            onClick: saveWord,
+                            className: "bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600"
+                        }, "💾 Save")
+                    )
+                );
+            };
+
+            // News Tab Component
+            const NewsTab = () => React.createElement('div', { className: "bg-white rounded-lg shadow-lg p-6" },
+                React.createElement('h3', { className: "text-xl font-bold mb-6" }, "Chuyển Đổi Tin Tức Tiếng Việt → Tiếng Anh"),
+                
+                React.createElement('div', { className: "mb-6" },
+                    React.createElement('label', { className: "block text-sm font-medium mb-2" }, "Nhập tin tức tiếng Việt:"),
+                    React.createElement('textarea', {
+                        value: vietnameseNews,
+                        onChange: (e) => setVietnameseNews(e.target.value),
+                        className: "w-full h-40 p-3 border rounded-lg resize-none",
+                        placeholder: "Dán nội dung tin tức tiếng Việt vào đây..."
+                    }),
+                    React.createElement('button', {
+                        onClick: handleTranslateNews,
+                        className: "mt-3 bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600"
+                    }, "🤖 Chuyển Đổi Thành Tiếng Anh (AI)")
+                ),
+
+                translatedNews && React.createElement('div', { className: "space-y-6" },
+                    // Dual columns
+                    React.createElement('div', { className: "grid grid-cols-1 lg:grid-cols-2 gap-6" },
+                        React.createElement('div', { className: "border rounded-lg overflow-hidden" },
+                            React.createElement('div', { className: "bg-blue-500 text-white p-3" },
+                                React.createElement('h4', { className: "font-bold" }, "🇺🇸 English Version")
+                            ),
+                            React.createElement('div', { 
+                                className: "p-4 bg-blue-50",
+                                dangerouslySetInnerHTML: { __html: translatedNews.englishVersion }
+                            })
+                        ),
+                        React.createElement('div', { className: "border rounded-lg overflow-hidden" },
+                            React.createElement('div', { className: "bg-green-500 text-white p-3" },
+                                React.createElement('h4', { className: "font-bold" }, "🇻🇳 Bản Dịch Tiếng Việt")
+                            ),
+                            React.createElement('div', { 
+                                className: "p-4 bg-green-50",
+                                dangerouslySetInnerHTML: { __html: translatedNews.vietnameseVersion }
+                            })
+                        )
+                    ),
+
+                    // Questions
+                    React.createElement('div', { className: "border rounded-lg p-4" },
+                        React.createElement('h4', { className: "font-bold mb-4" }, "📝 Câu Hỏi Trắc Nghiệm"),
+                        React.createElement('div', { className: "space-y-4" },
+                            translatedNews.questions.map((q, index) => 
+                                React.createElement('div', { key: index, className: "border p-3 rounded" },
+                                    React.createElement('p', { className: "font-medium mb-2" }, `${index + 1}. ${q.question}`),
+                                    React.createElement('div', { className: "space-y-1" },
+                                        q.options.map((option, optIndex) => 
+                                            React.createElement('label', { key: optIndex, className: "flex items-center" },
+                                                React.createElement('input', { type: "radio", name: `q${index}`, className: "mr-2" }),
+                                                React.createElement('span', { className: "text-sm" }, option)
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Vocabulary table
+                    React.createElement('div', { className: "border rounded-lg overflow-hidden" },
+                        React.createElement('div', { className: "bg-orange-500 text-white p-3" },
+                            React.createElement('h4', { className: "font-bold" }, "📚 Bảng Từ Vựng")
+                        ),
+                        React.createElement('table', { className: "w-full" },
+                            React.createElement('thead', { className: "bg-orange-50" },
+                                React.createElement('tr', null,
+                                    React.createElement('th', { className: "border p-3 text-left" }, "Từ Vựng"),
+                                    React.createElement('th', { className: "border p-3 text-left" }, "Phiên Âm"),
+                                    React.createElement('th', { className: "border p-3 text-left" }, "Nghĩa"),
+                                    React.createElement('th', { className: "border p-3 text-left" }, "Synonyms")
+                                )
+                            ),
+                            React.createElement('tbody', null,
+                                translatedNews.vocabulary.map((vocab, index) => 
+                                    React.createElement('tr', { key: index },
+                                        React.createElement('td', { className: "border p-3 font-medium text-blue-600" }, vocab.word),
+                                        React.createElement('td', { className: "border p-3 font-mono" }, vocab.ipa),
+                                        React.createElement('td', { className: "border p-3" }, vocab.meaning),
+                                        React.createElement('td', { className: "border p-3" }, vocab.synonyms)
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+
+            // Practice Tab Component
+            const PracticeTab = () => React.createElement('div', { className: "bg-white rounded-lg shadow-lg p-6" },
+                React.createElement('div', { className: "flex justify-between items-center mb-6" },
+                    React.createElement('h3', { className: "text-xl font-bold" }, "Luyện Thi THPT Thông Minh"),
+                    React.createElement('div', { className: "flex space-x-3" },
+                        React.createElement('input', {
+                            type: "file",
+                            accept: ".pdf",
+                            onChange: handlePDFUpload,
+                            ref: pdfInputRef,
+                            className: "hidden"
+                        }),
+                        React.createElement('button', {
+                            onClick: () => pdfInputRef.current?.click(),
+                            className: "bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center"
+                        }, "📄 Upload Đề Thi PDF")
+                    )
+                ),
+
+                uploadedExams.length > 0 && React.createElement('div', { className: "mb-8" },
+                    React.createElement('h4', { className: "text-lg font-bold mb-4" }, `📚 Thư Viện Đề Thi (${uploadedExams.length})`),
+                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" },
+                        uploadedExams.map((exam) => 
+                            React.createElement('div', { key: exam.id, className: "border rounded-lg p-4 hover:shadow-md" },
+                                React.createElement('h5', { className: "font-semibold text-blue-600 mb-2" }, exam.examTitle),
+                                React.createElement('p', { className: "text-sm text-gray-600 mb-1" }, `📄 ${exam.fileName}`),
+                                React.createElement('p', { className: "text-sm text-gray-600 mb-3" }, `⏱️ ${exam.timeLimit} phút`),
+                                React.createElement('div', { className: "flex space-x-2" },
+                                    React.createElement('button', {
+                                        onClick: () => {
+                                            setSelectedExam(exam);
+                                            startExam();
+                                        },
+                                        className: "flex-1 bg-green-500 text-white py-2 rounded text-sm hover:bg-green-600"
+                                    }, "Thi Ngay"),
+                                    React.createElement('button', {
+                                        onClick: () => setSelectedExam(exam),
+                                        className: "flex-1 bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600"
+                                    }, "Chi Tiết")
+                                )
+                            )
+                        )
+                    )
+                ),
+
+                selectedExam && !examMode && !showResults && React.createElement('div', { className: "mb-8 border rounded-lg overflow-hidden" },
+                    React.createElement('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4" },
+                        React.createElement('h4', { className: "text-lg font-bold" }, selectedExam.examTitle),
+                        React.createElement('p', { className: "text-blue-100" }, `📄 ${selectedExam.fileName}`)
+                    ),
+                    React.createElement('div', { className: "p-6" },
+                        React.createElement('div', { className: "grid grid-cols-3 gap-4 mb-6" },
+                            React.createElement('div', { className: "text-center p-4 bg-blue-50 rounded-lg" },
+                                React.createElement('div', { className: "text-2xl font-bold text-blue-600" }, selectedExam.totalQuestions),
+                                React.createElement('div', { className: "text-sm text-blue-600" }, "Câu hỏi")
+                            ),
+                            React.createElement('div', { className: "text-center p-4 bg-green-50 rounded-lg" },
+                                React.createElement('div', { className: "text-2xl font-bold text-green-600" }, selectedExam.timeLimit),
+                                React.createElement('div', { className: "text-sm text-green-600" }, "Phút")
+                            ),
+                            React.createElement('div', { className: "text-center p-4 bg-purple-50 rounded-lg" },
+                                React.createElement('div', { className: "text-2xl font-bold text-purple-600" }, selectedExam.examType),
+                                React.createElement('div', { className: "text-sm text-purple-600" }, "Loại đề")
+                            )
+                        ),
+                        React.createElement('div', { className: "flex justify-center space-x-4" },
+                            React.createElement('button', {
+                                onClick: startExam,
+                                className: "bg-green-500 text-white px-8 py-3 rounded-lg hover:bg-green-600"
+                            }, `▶️ Bắt Đầu Thi (${selectedExam.timeLimit} phút)`),
+                            React.createElement('button', {
+                                onClick: () => setSelectedExam(null),
+                                className: "bg-gray-500 text-white px-8 py-3 rounded-lg hover:bg-gray-600"
+                            }, "Đóng")
+                        )
+                    )
+                ),
+
+                examMode && React.createElement('div', { className: "text-center py-12" },
+                    React.createElement('div', { className: "fixed top-4 right-4 bg-white rounded-lg shadow-lg p-3 z-40" },
+                        React.createElement('div', { className: "flex items-center space-x-2" },
+                            React.createElement('span', null, "⏰"),
+                            React.createElement('span', { className: "text-lg font-mono font-bold text-blue-600" }, formatTime(examTime))
+                        )
+                    ),
+                    React.createElement('h4', { className: "text-2xl font-bold mb-4" }, "Đang Làm Bài Thi..."),
+                    React.createElement('p', { className: "text-gray-600 mb-6" }, "Chế độ thi đang được mô phỏng"),
+                    React.createElement('button', {
+                        onClick: finishExam,
+                        className: "bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600"
+                    }, "Nộp Bài (Demo)")
+                ),
+
+                showResults && React.createElement('div', { className: "space-y-6" },
+                    React.createElement('div', { className: "flex justify-between items-center" },
+                        React.createElement('h3', { className: "text-2xl font-bold" }, "Kết Quả Thi và Phân Tích"),
+                        React.createElement('button', {
+                            onClick: () => setShowResults(false),
+                            className: "bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                        }, "🔄 Làm Lại")
+                    ),
+
+                    React.createElement('div', { className: "grid grid-cols-4 gap-4" },
+                        React.createElement('div', { className: "bg-blue-50 p-4 rounded-lg text-center" },
+                            React.createElement('div', { className: "text-3xl font-bold text-blue-600" }, "85%"),
+                            React.createElement('div', { className: "text-sm text-blue-600" }, "Hoàn thành")
+                        ),
+                        React.createElement('div', { className: "bg-green-50 p-4 rounded-lg text-center" },
+                            React.createElement('div', { className: "text-3xl font-bold text-green-600" }, "7.5"),
+                            React.createElement('div', { className: "text-sm text-green-600" }, "Điểm số")
+                        ),
+                        React.createElement('div', { className: "bg-purple-50 p-4 rounded-lg text-center" },
+                            React.createElement('div

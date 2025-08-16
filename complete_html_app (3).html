@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart English Learning Platform - THPT</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React and Babel CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide React Icons CDN -->
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        }
+        
+        .prose {
+            max-width: none;
+        }
+        
+        .prose p {
+            margin-bottom: 1em;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { 
+            BookOpen, Brain, FileText, Languages, Target, TrendingUp, 
+            Clock, CheckCircle, AlertCircle, Star, Upload, Save, 
+            Search, X, Plus, Book, Users, Play, Pause, RotateCcw, 
+            Download, RefreshCw 
+        } = lucide;
+
+        // Enhanced sample data
+        const vocabularyCollections = [
+            { id: 1, name: "Academic Words", words: ['analyze', 'evaluate', 'contribute'] },
+            { id: 2, name: "Daily News", words: ['accomplish', 'demonstrate'] },
+            { id: 3, name: "THPT Preparation", words: ['significant', 'essential'] },
+            { id: 4, name: "Uploaded Vocabulary", words: [] }
+        ];
+
+        const sampleExamData = {
+            questions: [
+                {
+                    id: 1,
+                    type: "single",
+                    question: "Choose the correct tense: 'By next year, I _____ my studies.'",
+                    options: ["A. will complete", "B. will have completed", "C. complete", "D. completed"],
+                    correct: 1,
+                    knowledge: "Future Perfect Tense",
+                    difficulty: "Vận dụng",
+                    explanation: "Future Perfect được dùng để diễn tả hành động hoàn thành trước một thời điểm trong tương lai."
+                },
+                {
+                    id: 2,
+                    type: "reading_cluster",
+                    passage: "Climate change represents one of the most significant challenges facing humanity today. The increasing concentration of greenhouse gases in the atmosphere has led to a gradual warming of the planet, resulting in unprecedented changes to weather patterns, sea levels, and ecosystems worldwide.",
+                    questions: [
+                        {
+                            id: "2a",
+                            question: "What is the main cause of climate change according to the passage?",
+                            options: ["A. Natural disasters", "B. Human activities", "C. Ocean currents", "D. Solar radiation"],
+                            correct: 1,
+                            knowledge: "Reading Comprehension - Main Idea",
+                            difficulty: "Thông hiểu"
+                        },
+                        {
+                            id: "2b", 
+                            question: "The word 'unprecedented' is closest in meaning to:",
+                            options: ["A. Expected", "B. Minor", "C. Never seen before", "D. Temporary"],
+                            correct: 2,
+                            knowledge: "Vocabulary in Context",
+                            difficulty: "Nhận biết"
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const SmartEnglishLearning = () => {
+            // States
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [currentFlashcard, setCurrentFlashcard] = useState(0);
+            const [showAnswer, setShowAnswer] = useState(false);
+            const [selectedCollection, setSelectedCollection] = useState(1);
+            const [flashcardMode, setFlashcardMode] = useState('collection');
+            const [uploadedVocab, setUploadedVocab] = useState([]);
+            const [cardDifficulty, setCardDifficulty] = useState({});
+            const [showDictionary, setShowDictionary] = useState(false);
+            const [dictionaryWord, setDictionaryWord] = useState('');
+            const [dictionaryPosition, setDictionaryPosition] = useState({ x: 0, y: 0 });
+            const [examMode, setExamMode] = useState(false);
+            const [currentExamQuestion, setCurrentExamQuestion] = useState(0);
+            const [examAnswers, setExamAnswers] = useState({});
+            const [examTime, setExamTime] = useState(3600);
+            const [examResults, setExamResults] = useState(null);
+            const [showResults, setShowResults] = useState(false);
+            const [timerRunning, setTimerRunning] = useState(false);
+            const [savedWords, setSavedWords] = useState([]);
+            const [vietnameseNews, setVietnameseNews] = useState('');
+            const [translatedNews, setTranslatedNews] = useState(null);
+            const [uploadedExams, setUploadedExams] = useState([]);
+            const [selectedExam, setSelectedExam] = useState(null);
+            
+            const csvInputRef = useRef(null);
+            const pdfInputRef = useRef(null);
+
+            const tabs = [
+                { id: 'dashboard', label: 'Tổng Quan', icon: TrendingUp },
+                { id: 'flashcards', label: 'Flashcards', icon: Brain },
+                { id: 'news', label: 'Đọc Báo', icon: Languages },
+                { id: 'vocabulary', label: 'Sổ Từ Vựng', icon: Book },
+                { id: 'practice', label: 'Luyện Thi', icon: Target }
+            ];
+
+            // Timer effect
+            useEffect(() => {
+                let interval;
+                if (timerRunning && examTime > 0) {
+                    interval = setInterval(() => {
+                        setExamTime(time
